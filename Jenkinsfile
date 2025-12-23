@@ -2,49 +2,50 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = 'dockerhub'
-        BACKEND_IMAGE = 'docker login -u slimox891/backend:latest'
-        FRONTEND_IMAGE = 'docker login -u slimox891/frontend:latest'
+        DOCKERHUB_CREDS = 'dockerhub'
+        BACKEND_IMAGE = 'slimox891/backend:latest'
+        FRONTEND_IMAGE = 'slimox891/frontend:latest'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/MohammedGoat/TODO-LIST.git'
+                checkout scm
             }
         }
 
-        stage('Build Backend Image') {
+        stage('Build Backend') {
             steps {
-                script {
-                    docker.build("${env.BACKEND_IMAGE}", "-f Dockerfile.backend .")
-                }
+                sh 'docker build -f Dockerfile.backend -t $BACKEND_IMAGE .'
             }
         }
 
-        stage('Build Frontend Image') {
+        stage('Build Frontend') {
             steps {
-                script {
-                    docker.build("${env.FRONTEND_IMAGE}", "-f Dockerfile.frontend .")
-                }
+                sh 'docker build -f Dockerfile.frontend -t $FRONTEND_IMAGE .'
             }
         }
 
         stage('Push Images') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${env.DOCKERHUB_CREDENTIALS}") {
-                        docker.image("${env.BACKEND_IMAGE}").push()
-                        docker.image("${env.FRONTEND_IMAGE}").push()
-                    }
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                      docker push $BACKEND_IMAGE
+                      docker push $FRONTEND_IMAGE
+                    '''
                 }
             }
         }
 
-        stage('Deploy with Docker Compose') {
+        stage('Deploy') {
             steps {
-                sh 'docker-compose down'
-                sh 'docker-compose up -d --build'
+                sh 'docker-compose down || true'
+                sh 'docker-compose up -d'
             }
         }
     }
