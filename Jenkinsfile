@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        PATH = "/usr/local/bin:$PATH"
         DOCKERHUB_CREDS = 'dockerhub'
         BACKEND_IMAGE = 'slimox891/backend:latest'
         FRONTEND_IMAGE = 'slimox891/frontend:latest'
